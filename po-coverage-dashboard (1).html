@@ -305,7 +305,7 @@ async function runAnalysis() {
   try {
     pages = await notionQuery(DB_PO, {
       and:[
-        {property:'색상', rich_text:{equals: color}},
+        {property:'색상_제품명', rich_text:{equals: color}},
         {property:'PO상태', select:{does_not_equal:'수출완료'}}
       ]
     });
