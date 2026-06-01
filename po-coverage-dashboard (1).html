@@ -141,6 +141,7 @@ table.tbl tr:hover td{background:var(--bg2)}
           <button class="btn" onclick="reloadStock()">재고 새로고침 ↺</button>
           <button class="btn" onclick="clearProd()">생산량 초기화</button>
         </div>
+        <pre id="debug-msg" style="margin-top:10px;font-size:11px;color:#888;background:#f5f5f5;padding:8px;border-radius:6px;white-space:pre-wrap;display:block"></pre>
       </div>
     </div>
   </div>
@@ -170,36 +171,47 @@ const SIZES = ['3.5','4','4.5','5','5.5','6','6.5','7','7.5','8','8.5','9','9.5'
 
 async function notionQuery(dbId, filter) {
   const url = `https://api.notion.com/v1/databases/${dbId}/query`;
-  const body = filter ? {filter} : {};
-  const encoded = PROXY + encodeURIComponent(url);
-  // allorigins doesn't support POST well, use direct fetch with CORS
-  // Try direct first (works in some embed contexts)
-  try {
-    const res = await fetch(url, {
-      method:'POST',
-      headers:{
-        'Authorization':'Bearer '+TOKEN,
-        'Notion-Version':'2022-06-28',
-        'Content-Type':'application/json'
-      },
-      body: JSON.stringify({...body, page_size:200})
-    });
-    const data = await res.json();
-    if (data.results) return data.results;
-  } catch(e) {}
+  const body = JSON.stringify({...(filter ? {filter} : {}), page_size: 200});
+  const headers = {
+    'Authorization': 'Bearer ' + TOKEN,
+    'Notion-Version': '2022-06-28',
+    'Content-Type': 'application/json'
+  };
 
-  // Fallback: proxy
-  const res2 = await fetch('https://corsproxy.io/?' + encodeURIComponent(url), {
-    method:'POST',
-    headers:{
-      'Authorization':'Bearer '+TOKEN,
-      'Notion-Version':'2022-06-28',
-      'Content-Type':'application/json'
+  // 프록시 목록 순서대로 시도
+  const proxies = [
+    async () => {
+      const res = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(url), {
+        method: 'POST', headers, body
+      });
+      return res.json();
     },
-    body: JSON.stringify({...body, page_size:200})
-  });
-  const data2 = await res2.json();
-  return data2.results || [];
+    async () => {
+      const res = await fetch('https://thingproxy.freeboard.io/fetch/' + url, {
+        method: 'POST', headers, body
+      });
+      return res.json();
+    },
+    async () => {
+      // notion-proxy: base64 encode body workaround via GET
+      const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, {
+        method: 'GET'
+      });
+      const wrapper = await res.json();
+      return JSON.parse(wrapper.contents);
+    }
+  ];
+
+  for (const tryProxy of proxies) {
+    try {
+      const data = await tryProxy();
+      if (data && data.results) return data.results;
+    } catch(e) {
+      continue;
+    }
+  }
+
+  throw new Error('모든 프록시 연결 실패 — Notion API에 접근할 수 없습니다');
 }
 
 function getProp(page, key) {
