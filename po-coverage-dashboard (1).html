@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PO 커버리지 대시보드</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#ffffff;--bg2:#f7f6f3;--bg3:#f1f0ec;
+  --text:#1a1a1a;--text2:#6b6b6b;--text3:#9b9b9b;
+  --border:#e5e4e0;--border2:#d1d0cc;
+  --green-bg:#eaf3de;--green-txt:#3b6d11;
+  --amber-bg:#faeeda;--amber-txt:#854f0b;
+  --red-bg:#fcebeb;--red-txt:#a32d2d;
+  --blue-bg:#e6f1fb;--blue-txt:#185fa5;
+  --radius:8px;--radius-lg:12px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg3);color:var(--text);font-size:14px;min-height:100vh}
+.app{max-width:820px;margin:0 auto;padding:20px 16px}
+h1{font-size:17px;font-weight:600;color:var(--text);margin-bottom:4px}
+.subtitle{font-size:12px;color:var(--text3);margin-bottom:20px}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px}
+.metric{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius);padding:12px 14px}
+.metric-label{font-size:11px;color:var(--text3);margin-bottom:4px}
+.metric-val{font-size:22px;font-weight:600;color:var(--text);line-height:1.1}
+.metric-sub{font-size:11px;color:var(--text3);margin-top:3px}
+.tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:16px;gap:0}
+.tab{font-size:13px;padding:8px 14px;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;margin-bottom:-1px;background:none;border-top:none;border-left:none;border-right:none}
+.tab.active{color:var(--text);border-bottom-color:var(--text);font-weight:500}
+.tab:hover:not(.active){color:var(--text)}
+.panel{display:none}
+.panel.active{display:block}
+.card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;margin-bottom:12px}
+.section-label{font-size:12px;font-weight:500;color:var(--text2);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.section-label svg{flex-shrink:0}
+.input-row{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.input-group{flex:1;min-width:140px}
+.input-group label{font-size:11px;color:var(--text2);display:block;margin-bottom:4px}
+select,input[type=number]{width:100%;height:34px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg);color:var(--text);font-size:13px;padding:0 10px;outline:none}
+select:focus,input:focus{border-color:#888;box-shadow:0 0 0 2px rgba(0,0,0,0.06)}
+.divider{height:0.5px;background:var(--border);margin:14px 0}
+.size-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:6px}
+.size-cell{border:0.5px solid var(--border);border-radius:var(--radius);padding:6px 4px;text-align:center}
+.size-cell .sz{font-size:10px;color:var(--text3);margin-bottom:3px}
+.size-cell input{width:100%;border:none;background:transparent;text-align:center;font-size:12px;font-weight:500;color:var(--text);padding:0;height:auto;outline:none}
+.size-cell input:focus{color:#185fa5}
+.btn-row{display:flex;gap:8px;margin-top:14px}
+.btn{height:34px;padding:0 16px;border-radius:var(--radius);font-size:13px;cursor:pointer;border:0.5px solid var(--border2);background:var(--bg);color:var(--text);transition:background 0.1s}
+.btn:hover{background:var(--bg2)}
+.btn:active{transform:scale(0.98)}
+.btn-primary{background:var(--text);color:var(--bg);border-color:var(--text)}
+.btn-primary:hover{opacity:0.85}
+.progress-wrap{margin-bottom:16px}
+.progress-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:5px}
+.progress-meta strong{color:var(--text)}
+.progress-bg{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden}
+.progress-fill{height:5px;border-radius:3px;transition:width 0.5s ease}
+table.po-tbl{width:100%;border-collapse:collapse;font-size:12px}
+table.po-tbl th{font-size:11px;font-weight:500;color:var(--text3);text-align:left;padding:5px 8px;border-bottom:0.5px solid var(--border)}
+table.po-tbl td{padding:6px 8px;border-bottom:0.5px solid var(--border);vertical-align:middle}
+table.po-tbl tr:last-child td{border-bottom:none}
+table.po-tbl tr:hover td{background:var(--bg2)}
+.badge{display:inline-flex;align-items:center;gap:3px;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500;white-space:nowrap}
+.badge-ok{background:var(--green-bg);color:var(--green-txt)}
+.badge-partial{background:var(--amber-bg);color:var(--amber-txt)}
+.badge-no{background:var(--red-bg);color:var(--red-txt)}
+.mono{font-family:'SF Mono',Menlo,monospace;font-size:11px}
+.deficit{font-size:11px;color:var(--text3)}
+.stock-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px}
+.stock-cell{border-radius:var(--radius);padding:8px 6px;text-align:center;border:0.5px solid transparent}
+.stock-cell .sz{font-size:10px;color:var(--text3);margin-bottom:3px}
+.stock-cell .qty{font-size:14px;font-weight:600}
+.stock-ok{background:var(--green-bg);border-color:#c0dd97}.stock-ok .qty{color:var(--green-txt)}
+.stock-low{background:var(--amber-bg);border-color:#fac775}.stock-low .qty{color:var(--amber-txt)}
+.stock-zero{background:var(--red-bg);border-color:#f7c1c1}.stock-zero .qty{color:var(--red-txt)}
+.empty{padding:40px;text-align:center;color:var(--text3);font-size:13px}
+.scroll-x{overflow-x:auto}
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>📦 PO 커버리지 대시보드</h1>
+  <p class="subtitle">현재고 + 일일생산량 합산 → Ship Date 순 PO 충족 여부 분석</p>
+
+  <div class="metrics">
+    <div class="metric">
+      <div class="metric-label">분석 색상</div>
+      <div class="metric-val" id="m-color">—</div>
+      <div class="metric-sub">색상 선택 후 분석</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">현재고 총합</div>
+      <div class="metric-val" id="m-stock">—</div>
+      <div class="metric-sub">기존재고 + 생산량</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">커버 가능 PO</div>
+      <div class="metric-val" id="m-covered">—</div>
+      <div class="metric-sub" id="m-covered-sub">전체 대비</div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('input')">생산량 입력</button>
+    <button class="tab" onclick="switchTab('result')">PO 커버 분석</button>
+    <button class="tab" onclick="switchTab('stock')">잔여 재고</button>
+  </div>
+
+  <!-- 입력 탭 -->
+  <div id="tab-input" class="panel active">
+    <div class="card">
+      <div class="section-label">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+        색상 선택
+      </div>
+      <div class="input-row">
+        <div class="input-group">
+          <label>색상</label>
+          <select id="sel-color" onchange="onColorChange()">
+            <option value="">— 색상 선택 —</option>
+            <option value="Black | Apollo">Black | Apollo</option>
+            <option value="Flurry | Verdite">Flurry | Verdite</option>
+            <option value="Lily | Limelight">Lily | Limelight</option>
+            <option value="Black | Black">Black | Black</option>
+            <option value="Lucent | Black">Lucent | Black</option>
+            <option value="White | Cherrywood">White | Cherrywood</option>
+            <option value="White | Lucent">White | Lucent</option>
+            <option value="Pixie | Lucent">Pixie | Lucent</option>
+            <option value="Limelight | Bloom">Limelight | Bloom</option>
+            <option value="Pixie | Pixie">Pixie | Pixie</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div id="stock-inputs" style="display:none">
+      <div class="card">
+        <div class="section-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/></svg>
+          기존 재고 (사이즈별)
+        </div>
+        <div id="existing-stock-grid" class="size-grid"></div>
+      </div>
+
+      <div class="card">
+        <div class="section-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 20h20M6 20V10M10 20V4M14 20V10M18 20V14"/></svg>
+          금일 생산량 추가 입력
+        </div>
+        <div id="production-grid" class="size-grid"></div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="runAnalysis()">분석 실행 →</button>
+          <button class="btn" onclick="clearProd()">생산량 초기화</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 결과 탭 -->
+  <div id="tab-result" class="panel">
+    <div id="result-area" class="card">
+      <div class="empty">생산량 입력 탭에서 색상을 선택하고 분석을 실행하세요</div>
+    </div>
+  </div>
+
+  <!-- 잔여재고 탭 -->
+  <div id="tab-stock" class="panel">
+    <div id="stock-area" class="card">
+      <div class="empty">분석 실행 후 잔여 재고가 표시됩니다</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SIZES = ['3.5','4','4.5','5','5.5','6','6.5','7','7.5','8','8.5','9','9.5','10','10.5','11','11.5','12','12.5','13','14'];
+
+// 재고 현황 DB에 입력된 색상별 기존 재고
+// → Notion에 새 색상 재고 입력 시 아래 KNOWN_STOCK에 추가
+const KNOWN_STOCK = {
+  'Black | Apollo': {
+    '3.5':15,'4':2,'4.5':49,'5':198,'5.5':221,'6':577,'6.5':379,
+    '7':595,'7.5':694,'8':516,'8.5':848,'9':985,'9.5':1118,
+    '10':1607,'10.5':1139,'11':907,'11.5':671,'12':381,'12.5':100,'13':38,'14':27
+  }
+};
+
+// PO 데이터 (색상별, Ship Date 오름차순 정렬)
+const PO_DATA = [
+  // ── Black | Apollo ──
+  {po:'PO380033912',color:'Black | Apollo',dest:'US',date:'2026-03-30',qty:950,'4.5':10,'5':10,'5.5':20,'6':30,'6.5':50,'7':40,'7.5':40,'8':60,'8.5':70,'9':90,'9.5':120,'10':110,'10.5':100,'11':90,'11.5':50,'12':40,'12.5':10,'13':10},
+  {po:'PO380000513',color:'Black | Apollo',dest:'CA',date:'2026-04-30',qty:270,'3.5':5,'4':5,'4.5':5,'5':20,'5.5':30,'6':20,'6.5':30,'7':20,'7.5':30,'8':10,'9':10,'9.5':5,'10':10,'10.5':20,'11':10,'11.5':10,'12':10,'12.5':10,'13':5,'14':5},
+  {po:'PO380024858',color:'Black | Apollo',dest:'ZA',date:'2026-05-13',qty:20,'7.5':5,'8.5':5,'9.5':5,'10.5':5},
+  {po:'PO380024860',color:'Black | Apollo',dest:'IT',date:'2026-05-13',qty:65,'6.5':5,'7':5,'7.5':5,'8':5,'8.5':5,'9':5,'9.5':5,'10':5,'10.5':5,'11':5,'11.5':5,'12':5,'12.5':5},
+  {po:'PO380024861',color:'Black | Apollo',dest:'AR',date:'2026-05-13',qty:20,'6':5,'6.5':5,'9.5':5,'10':5},
+  {po:'PO380024863',color:'Black | Apollo',dest:'AE',date:'2026-05-13',qty:978,'4.5':48,'5.5':90,'6.5':95,'7':100,'8':100,'8.5':100,'9.5':100,'10':100,'11':100,'11.5':95,'12':50},
+  {po:'PO380024864',color:'Black | Apollo',dest:'ZA',date:'2026-05-13',qty:70,'5.5':5,'6':5,'6.5':5,'7':5,'7.5':5,'8':5,'8.5':5,'9':10,'9.5':5,'10':5,'11':5,'11.5':5,'12':5},
+  {po:'PO380024865',color:'Black | Apollo',dest:'MX',date:'2026-05-13',qty:75,'5.5':5,'6':5,'6.5':5,'7':5,'7.5':10,'8':5,'8.5':5,'9':5,'9.5':10,'10':10,'10.5':5,'11':5},
+  {po:'PO380035818',color:'Black | Apollo',dest:'PH',date:'2026-05-13',qty:78,'4':2,'5':3,'5.5':4,'6':4,'6.5':7,'7':7,'7.5':7,'8':7,'8.5':7,'9':7,'9.5':7,'10':6,'10.5':3,'11':3,'11.5':2,'12':2},
+  {po:'PO380006777',color:'Black | Apollo',dest:'AU',date:'2026-05-15',qty:200,'6':5,'6.5':10,'7':10,'7.5':5,'8':5,'8.5':10,'9':10,'9.5':20,'10':20,'10.5':30,'11':20,'11.5':20,'12':10,'12.5':5,'13':10,'14':10},
+  {po:'PO380006781',color:'Black | Apollo',dest:'CA',date:'2026-05-15',qty:280,'3.5':10,'4':10,'4.5':10,'5':10,'5.5':20,'6':20,'6.5':20,'7':20,'7.5':10,'8':10,'9':10,'9.5':10,'10':20,'10.5':20,'11':20,'11.5':20,'12':10,'12.5':10,'13':10,'14':10},
+  {po:'PO380006782',color:'Black | Apollo',dest:'US',date:'2026-05-15',qty:20,'5':20},
+  {po:'PO380033913',color:'Black | Apollo',dest:'US',date:'2026-05-29',qty:2040,'4.5':10,'5':20,'5.5':50,'6':80,'6.5':80,'7':90,'7.5':80,'8':130,'8.5':170,'9':200,'9.5':250,'10':270,'10.5':220,'11':170,'11.5':130,'12':50,'12.5':30,'14':10},
+  {po:'PO380057122',color:'Black | Apollo',dest:'KR',date:'2026-05-29',qty:10,'7':10},
+  {po:'PO380057123',color:'Black | Apollo',dest:'US',date:'2026-05-29',qty:1450,'4.5':10,'5.5':50,'6':60,'6.5':80,'7':80,'7.5':90,'8':110,'8.5':120,'9':130,'9.5':170,'10':150,'10.5':140,'11':110,'11.5':80,'12':50,'12.5':20},
+  {po:'PO380057125',color:'Black | Apollo',dest:'GB',date:'2026-05-29',qty:220,'5.5':10,'7':10,'8':10,'8.5':80,'9':70,'11':40},
+  {po:'PO380057126',color:'Black | Apollo',dest:'KR',date:'2026-05-29',qty:120,'8':30,'8.5':30,'9':30,'9.5':30},
+  {po:'PO380057127',color:'Black | Apollo',dest:'KR',date:'2026-05-29',qty:50,'7.5':20,'10':20,'10.5':10},
+  {po:'PO380057128',color:'Black | Apollo',dest:'GB',date:'2026-05-29',qty:260,'9.5':100,'10':80,'10.5':80},
+  {po:'PO380057131',color:'Black | Apollo',dest:'GB',date:'2026-05-29',qty:70,'6.5':20,'7.5':50},
+  {po:'PO380006774',color:'Black | Apollo',dest:'HK',date:'2026-06-15',qty:20,'5.5':10,'6':10},
+  {po:'PO380006776',color:'Black | Apollo',dest:'CN',date:'2026-06-15',qty:840,'5.5':90,'6':80,'6.5':40,'7':20,'7.5':70,'8':50,'8.5':100,'9':70,'9.5':80,'10':80,'10.5':30,'11':40,'11.5':40,'12':30,'12.5':20},
+  {po:'PO380006778',color:'Black | Apollo',dest:'US',date:'2026-06-15',qty:160,'5':30,'5.5':30,'6':60,'7':10,'7.5':10,'13':10,'14':10},
+  {po:'PO380006780',color:'Black | Apollo',dest:'GB',date:'2026-06-15',qty:320,'5':20,'5.5':10,'6':40,'6.5':20,'7':20,'7.5':30,'8':50,'8.5':50,'9':40,'9.5':10,'10':20,'10.5':10},
+  {po:'PO380033914',color:'Black | Apollo',dest:'US',date:'2026-06-15',qty:1560,'4.5':10,'5':20,'5.5':30,'6':60,'6.5':70,'7':60,'7.5':70,'8':90,'8.5':140,'9':140,'9.5':200,'10':210,'10.5':160,'11':130,'11.5':100,'12':50,'12.5':10,'13':10},
+  {po:'PO380043317',color:'Black | Apollo',dest:'GB',date:'2026-07-30',qty:6020,'3.5':10,'4':10,'4.5':30,'5':50,'5.5':80,'6':90,'6.5':160,'7':160,'7.5':230,'8':330,'8.5':450,'9':620,'9.5':680,'10':760,'10.5':620,'11':750,'11.5':320,'12':390,'12.5':140,'13':120,'14':20},
+  {po:'PO380043318',color:'Black | Apollo',dest:'JP',date:'2026-07-30',qty:2570,'3.5':5,'4':10,'4.5':65,'5':90,'5.5':110,'6':110,'6.5':80,'7':110,'7.5':150,'8':220,'8.5':320,'9':330,'9.5':300,'10':200,'10.5':160,'11':120,'11.5':70,'12':50,'12.5':30,'13':30,'14':10},
+  {po:'PO380043319',color:'Black | Apollo',dest:'US',date:'2026-07-30',qty:3980,'3.5':30,'4':30,'4.5':50,'5':70,'5.5':130,'6':180,'6.5':180,'7':190,'7.5':190,'8':170,'8.5':200,'9':250,'9.5':360,'10':400,'10.5':370,'11':390,'11.5':260,'12':280,'12.5':100,'13':110,'14':40},
+  {po:'PO380034107',color:'Black | Apollo',dest:'US',date:'2026-08-10',qty:3900,'3.5':20,'4':20,'4.5':40,'5':60,'5.5':120,'6':180,'6.5':180,'7':190,'7.5':190,'8':180,'8.5':190,'9':260,'9.5':360,'10':400,'10.5':380,'11':380,'11.5':260,'12':280,'12.5':90,'13':100,'14':20},
+  {po:'PO380034108',color:'Black | Apollo',dest:'JP',date:'2026-08-10',qty:2560,'3.5':5,'4':10,'4.5':65,'5':90,'5.5':110,'6':110,'6.5':85,'7':115,'7.5':150,'8':220,'8.5':320,'9':325,'9.5':300,'10':210,'10.5':150,'11':110,'11.5':70,'12':50,'12.5':30,'13':25,'14':10},
+  {po:'PO380034110',color:'Black | Apollo',dest:'GB',date:'2026-08-10',qty:2040,'4.5':10,'5':10,'5.5':30,'6':30,'6.5':50,'7':60,'7.5':80,'8':130,'8.5':160,'9':150,'9.5':230,'10':250,'10.5':210,'11':250,'11.5':110,'12':180,'12.5':50,'13':40,'14':10},
+  {po:'PO380049145',color:'Black | Apollo',dest:'CN',date:'2026-08-31',qty:720,'4':30,'4.5':90,'5':90,'6':10,'6.5':60,'7':150,'7.5':70,'8':120,'8.5':30,'9':20,'9.5':50},
+  {po:'PO380049148',color:'Black | Apollo',dest:'AU',date:'2026-08-31',qty:160,'5':5,'7':5,'7.5':10,'8':20,'8.5':30,'9':30,'9.5':30,'10':20,'10.5':10},
+  {po:'PO380049149',color:'Black | Apollo',dest:'US',date:'2026-08-31',qty:3100,'4.5':20,'5':30,'5.5':120,'6':160,'6.5':210,'7':210,'7.5':230,'8':200,'8.5':220,'9':220,'9.5':280,'10':260,'10.5':250,'11':210,'11.5':180,'12':130,'12.5':90,'13':40,'14':40},
+  {po:'PO380055120',color:'Black | Apollo',dest:'CA',date:'2026-09-30',qty:1150,'3.5':330,'4':500,'14':320},
+  {po:'PO380055123',color:'Black | Apollo',dest:'AU',date:'2026-09-30',qty:940,'4':20,'14':920},
+  {po:'PO380055125',color:'Black | Apollo',dest:'JP',date:'2026-09-30',qty:70,'4':70},
+];
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    t.classList.toggle('active',['input','result','stock'][i]===name);
+  });
+  ['input','result','stock'].forEach(n=>{
+    document.getElementById('tab-'+n).classList.toggle('active',n===name);
+  });
+}
+
+function onColorChange() {
+  const color = document.getElementById('sel-color').value;
+  document.getElementById('stock-inputs').style.display = color ? 'block' : 'none';
+  document.getElementById('m-color').textContent = color || '—';
+  document.getElementById('m-stock').textContent = '—';
+  document.getElementById('m-covered').textContent = '—';
+  if (!color) return;
+  renderInputGrids(color);
+}
+
+function renderInputGrids(color) {
+  const known = KNOWN_STOCK[color] || {};
+  ['existing-stock-grid','production-grid'].forEach((id,isProd)=>{
+    const el = document.getElementById(id);
+    el.innerHTML = SIZES.map(s=>`
+      <div class="size-cell">
+        <div class="sz">${s}</div>
+        <input type="number" id="${isProd?'pr':'ex'}-${s}" value="${isProd?0:(known[s]||0)}" min="0" placeholder="0">
+      </div>`).join('');
+  });
+}
+
+function getStock() {
+  const s = {};
+  SIZES.forEach(sz=>{
+    s[sz] = (parseFloat(document.getElementById('ex-'+sz)?.value)||0)
+           +(parseFloat(document.getElementById('pr-'+sz)?.value)||0);
+  });
+  return s;
+}
+
+function clearProd() {
+  SIZES.forEach(s=>{ const el=document.getElementById('pr-'+s); if(el) el.value=0; });
+}
+
+function runAnalysis() {
+  const color = document.getElementById('sel-color').value;
+  if (!color) { alert('색상을 선택하세요'); return; }
+
+  const stock = getStock();
+  const totalStock = SIZES.reduce((a,s)=>a+(stock[s]||0),0);
+  document.getElementById('m-stock').textContent = totalStock.toLocaleString();
+  document.getElementById('m-color').textContent = color;
+
+  const pos = PO_DATA.filter(p=>p.color===color).sort((a,b)=>a.date.localeCompare(b.date));
+  const rem = {...stock};
+  const results = [];
+  let covered = 0;
+
+  pos.forEach(po=>{
+    let canFull=true, deficit=[];
+    SIZES.forEach(s=>{
+      const need = po[s]||0;
+      if (!need) return;
+      if (rem[s] < need) { canFull=false; deficit.push(`${s}(${need-Math.max(0,rem[s])}부족)`); }
+    });
+    let status;
+    if (canFull) {
+      status='full'; covered++;
+      SIZES.forEach(s=>{ rem[s]=Math.max(0,rem[s]-(po[s]||0)); });
+    } else {
+      const hasAny = SIZES.some(s=>(po[s]||0)>0 && rem[s]>0);
+      status = hasAny ? 'partial' : 'none';
+    }
+    results.push({po,status,deficit});
+  });
+
+  document.getElementById('m-covered').textContent = `${covered} / ${pos.length}`;
+  document.getElementById('m-covered-sub').textContent =
+    covered===pos.length ? '전체 커버 가능 ✓'
+    : results.find(r=>r.status!=='full')
+      ? `다음 미충족: ${results.find(r=>r.status!=='full').po.po}`
+      : '';
+
+  renderResults(results, color, covered, pos.length);
+  renderStock(rem, stock);
+  switchTab('result');
+}
+
+function renderResults(results, color, covered, total) {
+  const pct = total ? Math.round(covered/total*100) : 0;
+  const barColor = pct>=80?'#639922':pct>=50?'#BA7517':'#A32D2D';
+  let html = `
+    <div class="progress-wrap">
+      <div class="progress-meta">
+        <span>${color} — Ship Date 순 PO 커버 현황</span>
+        <strong>${covered}/${total} PO (${pct}%)</strong>
+      </div>
+      <div class="progress-bg"><div class="progress-fill" style="width:${pct}%;background:${barColor}"></div></div>
+    </div>
+    <div class="scroll-x">
+    <table class="po-tbl">
+      <thead><tr>
+        <th>PO번호</th><th>목적지</th><th>Ship Date</th>
+        <th style="text-align:right">수량</th><th>상태</th><th>부족 사이즈</th>
+      </tr></thead>
+      <tbody>`;
+
+  results.forEach(({po,status,deficit})=>{
+    const badge = status==='full'
+      ? `<span class="badge badge-ok">✓ 커버</span>`
+      : status==='partial'
+      ? `<span class="badge badge-partial">△ 부분</span>`
+      : `<span class="badge badge-no">✕ 불가</span>`;
+    const def = deficit.length
+      ? `<span class="deficit">${deficit.slice(0,5).join(' · ') + (deficit.length>5 ? ' 외 '+(deficit.length-5)+'건' : '')}</span>`
+      : '<span class="deficit" style="color:var(--text3)">—</span>';
+    html += `<tr>
+      <td class="mono">${po.po}</td>
+      <td>${po.dest}</td>
+      <td>${po.date}</td>
+      <td style="text-align:right">${po.qty.toLocaleString()}</td>
+      <td>${badge}</td>
+      <td>${def}</td>
+    </tr>`;
+  });
+  html += `</tbody></table></div>`;
+  document.getElementById('result-area').innerHTML = html;
+}
+
+function renderStock(rem, orig) {
+  const total = SIZES.reduce((a,s)=>a+(rem[s]||0),0);
+  let html = `<div style="font-size:12px;color:var(--text2);margin-bottom:12px">PO 충당 후 잔여 재고 — 합계: <strong style="color:var(--text)">${total.toLocaleString()}</strong></div>
+    <div class="stock-grid">`;
+  SIZES.forEach(s=>{
+    const qty = rem[s]||0, o = orig[s]||0;
+    const cls = qty===0?'stock-zero':qty<o*0.3?'stock-low':'stock-ok';
+    html += `<div class="stock-cell ${cls}"><div class="sz">${s}</div><div class="qty">${qty.toLocaleString()}</div></div>`;
+  });
+  html += `</div>`;
+  document.getElementById('stock-area').innerHTML = html;
+}
+</script>
+</body>
+</html>
